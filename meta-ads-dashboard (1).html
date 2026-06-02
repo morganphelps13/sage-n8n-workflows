@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Meta Ads Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0a0a0f;
+    --surface: #13131a;
+    --surface2: #1c1c26;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.12);
+    --text: #f0f0f5;
+    --text2: #8888a0;
+    --text3: #55556a;
+    --accent: #7c6cfa;
+    --accent2: #a594fc;
+    --green: #34d399;
+    --amber: #fbbf24;
+    --coral: #f87171;
+    --teal: #22d3ee;
+    --font: 'DM Sans', sans-serif;
+    --mono: 'DM Mono', monospace;
+  }
+  body { font-family: var(--font); background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 1.25rem 2rem; border-bottom: 1px solid var(--border);
+    background: var(--surface); position: sticky; top: 0; z-index: 100;
+    flex-wrap: wrap; gap: 12px;
+  }
+  .logo { font-size: 14px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text2); }
+  .logo span { color: var(--accent2); }
+  .controls { display: flex; gap: 10px; flex-wrap: wrap; }
+  select {
+    background: var(--surface2); border: 1px solid var(--border2); color: var(--text);
+    font-family: var(--font); font-size: 13px; padding: 8px 14px;
+    border-radius: 8px; outline: none; cursor: pointer; min-width: 180px;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238888a0' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 12px center;
+    padding-right: 32px;
+  }
+  select:focus { border-color: var(--accent); }
+
+  .main { padding: 2rem; max-width: 1400px; margin: 0 auto; }
+
+  .client-header { margin-bottom: 2rem; }
+  .client-name { font-size: 28px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+  .client-sub { font-size: 13px; color: var(--text2); }
+
+  .metrics-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px; margin-bottom: 2rem;
+  }
+  .metric-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 1.25rem;
+    transition: border-color 0.2s;
+  }
+  .metric-card:hover { border-color: var(--border2); }
+  .metric-label { font-size: 11px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text3); margin-bottom: 8px; }
+  .metric-value { font-size: 26px; font-weight: 500; color: var(--text); line-height: 1; font-family: var(--mono); }
+  .metric-value.green { color: var(--green); }
+  .metric-value.amber { color: var(--amber); }
+  .metric-value.accent { color: var(--accent2); }
+  .metric-value.teal { color: var(--teal); }
+
+  .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .chart-full { grid-column: 1 / -1; }
+  .chart-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 1.25rem;
+  }
+  .chart-label { font-size: 12px; font-weight: 500; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text3); margin-bottom: 1rem; }
+  .chart-wrap { position: relative; height: 220px; }
+
+  .table-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; overflow: hidden; margin-bottom: 2rem;
+  }
+  .table-header { padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); }
+  .table-title { font-size: 12px; font-weight: 500; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text3); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { padding: 10px 16px; text-align: left; color: var(--text3); font-weight: 500; font-size: 11px; letter-spacing: 0.05em; text-transform: uppercase; border-bottom: 1px solid var(--border); }
+  td { padding: 12px 16px; border-bottom: 1px solid var(--border); color: var(--text); }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--surface2); }
+  .num { font-family: var(--mono); font-size: 12px; }
+  .tag { display: inline-block; background: rgba(124,108,250,0.15); color: var(--accent2); font-size: 10px; padding: 2px 8px; border-radius: 4px; font-weight: 500; }
+
+  .empty { text-align: center; padding: 4rem; color: var(--text3); font-size: 14px; }
+  .loading-state { text-align: center; padding: 4rem; color: var(--text2); font-size: 14px; }
+  .dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); margin-right: 6px; animation: pulse 1.5s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  .legend { display: flex; gap: 16px; margin-bottom: 12px; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text2); }
+  .legend-dot { width: 8px; height: 8px; border-radius: 2px; }
+
+  @media (max-width: 640px) {
+    .main { padding: 1rem; }
+    .charts-grid { grid-template-columns: 1fr; }
+    .topbar { padding: 1rem; }
+    .metric-value { font-size: 20px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">Sage <span>Creatives</span> — Ad Intelligence</div>
+  <div class="controls">
+    <select id="clientSelect"></select>
+    <select id="dateRange">
+      <option value="7">Last 7 days</option>
+      <option value="30" selected>Last 30 days</option>
+      <option value="90">Last 90 days</option>
+      <option value="365">Last 12 months</option>
+      <option value="all">All time</option>
+    </select>
+  </div>
+</div>
+
+<div class="main">
+  <div class="client-header">
+    <div class="client-name" id="clientTitle">—</div>
+    <div class="client-sub" id="clientSub">Meta Ads Performance</div>
+  </div>
+
+  <div class="metrics-grid">
+    <div class="metric-card"><div class="metric-label">Total spend</div><div class="metric-value accent" id="mSpend">—</div></div>
+    <div class="metric-card"><div class="metric-label">Total leads</div><div class="metric-value green" id="mLeads">—</div></div>
+    <div class="metric-card"><div class="metric-label">Cost per lead</div><div class="metric-value" id="mCPL">—</div></div>
+    <div class="metric-card"><div class="metric-label">Impressions</div><div class="metric-value" id="mImpr">—</div></div>
+    <div class="metric-card"><div class="metric-label">Hold rate</div><div class="metric-value teal" id="mHold">—</div></div>
+    <div class="metric-card"><div class="metric-label">Engagement rate</div><div class="metric-value amber" id="mEng">—</div></div>
+    <div class="metric-card"><div class="metric-label">Clicks</div><div class="metric-value" id="mClicks">—</div></div>
+    <div class="metric-card"><div class="metric-label">CTR</div><div class="metric-value" id="mCTR">—</div></div>
+  </div>
+
+  <div class="charts-grid">
+    <div class="chart-card">
+      <div class="chart-label">Daily spend</div>
+      <div class="chart-wrap"><canvas id="spendChart" role="img" aria-label="Daily spend over time">Daily ad spend trend.</canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-label">Daily leads</div>
+      <div class="chart-wrap"><canvas id="leadsChart" role="img" aria-label="Daily leads over time">Daily leads trend.</canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-label">Cost per lead trend</div>
+      <div class="chart-wrap"><canvas id="cplChart" role="img" aria-label="CPL trend">CPL trend over time.</canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#22d3ee"></div>Hold rate</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#fbbf24"></div>Engagement rate</div>
+      </div>
+      <div class="chart-label">Video performance</div>
+      <div class="chart-wrap"><canvas id="videoChart" role="img" aria-label="Hold rate and engagement rate">Video performance metrics.</canvas></div>
+    </div>
+  </div>
+
+  <div class="table-card">
+    <div class="table-header"><div class="table-title">Campaign breakdown</div></div>
+    <div id="campaignTable"><div class="loading-state"><span class="dot"></span>Loading campaign data...</div></div>
+  </div>
+</div>
+
+<script>
+const SHEET_ID = '1mIfIeWtei6SgGdYmY2p31oQt3e7cLMuOn6pHsBpduv8';
+const CLIENTS = [
+  'Backyards by Taborsky','Calvery Pools','Centennial Contracting & Roofing',
+  'Golf Lounge','Imagine Nation/Walnut Creek Academy','Millet Pools',
+  'R&R HVAC','Schaffer Equipment','Taft & Associates',
+  'Flower Mound Med Spa','VIP with Callaway',"Wiley's Jewelry Store"
+];
+
+const sel = document.getElementById('clientSelect');
+CLIENTS.forEach(c => {
+  const o = document.createElement('option');
+  o.value = c; o.textContent = c; sel.appendChild(o);
+});
+
+let charts = {};
+function destroyCharts() { Object.values(charts).forEach(c => c.destroy()); charts = {}; }
+
+const fmt$ = n => '$' + Number(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+const fmtN = n => Number(n).toLocaleString('en-US',{maximumFractionDigits:0});
+const fmtPct = n => Number(n).toFixed(1) + '%';
+const avg = arr => arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : 0;
+
+async function loadData(client, days) {
+  const tab = encodeURIComponent(client);
+  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${tab}`;
+  try {
+    const res = await fetch(url);
+    const text = await res.text();
+    const match = text.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\)/);
+    if (!match) return [];
+    const json = JSON.parse(match[1]);
+    const cols = json.table.cols.map(c => c.label.toLowerCase().trim());
+    const rows = (json.table.rows || []).map(r => {
+      const obj = {};
+      cols.forEach((c,i) => {
+        if (!r.c[i]) { obj[c] = null; return; }
+        const val = r.c[i].v;
+        if (c === 'date' && typeof val === 'string' && val.startsWith('Date(')) {
+          const parts = val.replace('Date(','').replace(')','').split(',');
+          const yr = parseInt(parts[0]), mo = parseInt(parts[1]), dy = parseInt(parts[2]);
+          const d = new Date(yr, mo, dy);
+          obj[c] = d.toISOString().slice(0,10);
+        } else {
+          obj[c] = val;
+        }
+      });
+      return obj;
+    });
+    const cutoff = days === 'all' ? new Date(0) : new Date(Date.now() - days*864e5);
+    return rows.filter(r => {
+      if (!r.date) return false;
+      return new Date(r.date) >= cutoff && (Number(r.impressions||0) > 0 || Number(r.spend||0) > 0);
+    });
+  } catch(e) { return []; }
+}
+
+function groupByDate(rows) {
+  const map = {};
+  rows.forEach(r => {
+    const d = (r.date||'').toString().slice(0,10);
+    if (!d || d==='unknown') return;
+    if (!map[d]) map[d] = {spend:0,leads:0,impressions:0,hold:[],eng:[],cpl:[]};
+    map[d].spend += Number(r.spend||0);
+    map[d].leads += Number(r.leads||0);
+    map[d].impressions += Number(r.impressions||0);
+    if (r.hold_rate != null) map[d].hold.push(Number(r.hold_rate));
+    if (r.engagement_rate != null) map[d].eng.push(Number(r.engagement_rate));
+    if (r.cpl != null) map[d].cpl.push(Number(r.cpl));
+  });
+  return Object.entries(map).sort((a,b)=>a[0]>b[0]?1:-1);
+}
+
+function makeChart(id, type, labels, datasets, yFmt) {
+  const ctx = document.getElementById(id);
+  if (!ctx) return null;
+  return new Chart(ctx, {
+    type,
+    data: {labels, datasets},
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {legend:{display:false}},
+      scales: {
+        x: {
+          ticks: {font:{size:10,family:'DM Mono'},color:'#55556a',autoSkip:true,maxRotation:45},
+          grid: {display:false}, border:{color:'rgba(255,255,255,0.07)'}
+        },
+        y: {
+          ticks: {font:{size:10,family:'DM Mono'},color:'#55556a',callback:yFmt||(v=>v)},
+          grid: {color:'rgba(255,255,255,0.04)'}, border:{color:'transparent'}
+        }
+      }
+    }
+  });
+}
+
+async function render() {
+  const client = document.getElementById('clientSelect').value;
+  const days = document.getElementById('dateRange').value;
+
+  document.getElementById('clientTitle').textContent = client;
+  document.getElementById('clientSub').textContent = 'Meta Ads Performance · ' + (days==='all' ? 'All time' : 'Last '+days+' days');
+
+  ['mSpend','mLeads','mCPL','mImpr','mHold','mEng','mClicks','mCTR'].forEach(id => {
+    document.getElementById(id).textContent = '...';
+  });
+  document.getElementById('campaignTable').innerHTML = '<div class="loading-state"><span class="dot"></span>Loading...</div>';
+  destroyCharts();
+
+  const rows = await loadData(client, days === 'all' ? 'all' : parseInt(days));
+
+  if (!rows.length) {
+    document.getElementById('campaignTable').innerHTML = '<div class="empty">No data found for this date range. Make sure the N8N workflow has run and data exists in the sheet.</div>';
+    ['mSpend','mLeads','mCPL','mImpr','mHold','mEng','mClicks','mCTR'].forEach(id => {
+      document.getElementById(id).textContent = '—';
+    });
+    return;
+  }
+
+  const totalSpend = rows.reduce((s,r)=>s+Number(r.spend||0),0);
+  const totalLeads = rows.reduce((s,r)=>s+Number(r.leads||0),0);
+  const totalImpr = rows.reduce((s,r)=>s+Number(r.impressions||0),0);
+  const totalClicks = rows.reduce((s,r)=>s+Number(r.clicks||0),0);
+  const cpl = totalLeads > 0 ? totalSpend/totalLeads : 0;
+  const avgHold = avg(rows.filter(r=>r.hold_rate!=null).map(r=>Number(r.hold_rate)));
+  const avgEng = avg(rows.filter(r=>r.engagement_rate!=null).map(r=>Number(r.engagement_rate)));
+  const avgCTR = avg(rows.filter(r=>r.ctr!=null).map(r=>Number(r.ctr)));
+
+  document.getElementById('mSpend').textContent = fmt$(totalSpend);
+  document.getElementById('mLeads').textContent = fmtN(totalLeads);
+  document.getElementById('mCPL').textContent = cpl > 0 ? fmt$(cpl) : '—';
+  document.getElementById('mImpr').textContent = fmtN(totalImpr);
+  document.getElementById('mHold').textContent = avgHold > 0 ? fmtPct(avgHold) : '—';
+  document.getElementById('mEng').textContent = avgEng > 0 ? fmtPct(avgEng) : '—';
+  document.getElementById('mClicks').textContent = fmtN(totalClicks);
+  document.getElementById('mCTR').textContent = avgCTR > 0 ? fmtPct(avgCTR) : '—';
+
+  const byDate = groupByDate(rows);
+  const labels = byDate.map(([d])=>d.slice(5));
+  const spendData = byDate.map(([,v])=>+v.spend.toFixed(2));
+  const leadsData = byDate.map(([,v])=>v.leads);
+  const cplData = byDate.map(([,v])=>v.cpl.length ? +avg(v.cpl).toFixed(2) : null);
+  const holdData = byDate.map(([,v])=>v.hold.length ? +avg(v.hold).toFixed(2) : null);
+  const engData = byDate.map(([,v])=>v.eng.length ? +avg(v.eng).toFixed(2) : null);
+
+  charts.spend = makeChart('spendChart','line',labels,[{
+    data:spendData, borderColor:'#a594fc', backgroundColor:'rgba(165,148,252,0.1)',
+    tension:0.4, pointRadius:2, pointBackgroundColor:'#a594fc', fill:true, borderWidth:2
+  }], v=>'$'+v.toFixed(0));
+
+  charts.leads = makeChart('leadsChart','bar',labels,[{
+    data:leadsData, backgroundColor:'rgba(52,211,153,0.7)', borderRadius:4, borderSkipped:false
+  }]);
+
+  charts.cpl = makeChart('cplChart','line',labels,[{
+    data:cplData, borderColor:'#f87171', backgroundColor:'rgba(248,113,113,0.08)',
+    tension:0.4, pointRadius:2, pointBackgroundColor:'#f87171', fill:true, borderWidth:2, spanGaps:true
+  }], v=>'$'+v.toFixed(0));
+
+  charts.video = makeChart('videoChart','line',labels,[
+    {data:holdData, borderColor:'#22d3ee', tension:0.4, pointRadius:2, borderWidth:2, spanGaps:true, pointBackgroundColor:'#22d3ee'},
+    {data:engData, borderColor:'#fbbf24', tension:0.4, pointRadius:2, borderWidth:2, spanGaps:true, borderDash:[5,4], pointBackgroundColor:'#fbbf24'}
+  ], v=>v.toFixed(1)+'%');
+
+  const campaigns = {};
+  rows.forEach(r => {
+    const k = r.campaign_name || 'Unknown campaign';
+    if (!campaigns[k]) campaigns[k] = {spend:0,leads:0,impressions:0,clicks:0};
+    campaigns[k].spend += Number(r.spend||0);
+    campaigns[k].leads += Number(r.leads||0);
+    campaigns[k].impressions += Number(r.impressions||0);
+    campaigns[k].clicks += Number(r.clicks||0);
+  });
+
+  const sorted = Object.entries(campaigns).sort((a,b)=>b[1].spend-a[1].spend);
+  const tableHTML = `<table>
+    <thead><tr>
+      <th>Campaign</th><th>Spend</th><th>Impressions</th><th>Clicks</th><th>Leads</th><th>CPL</th>
+    </tr></thead>
+    <tbody>${sorted.map(([name,v])=>`<tr>
+      <td>${name}</td>
+      <td class="num">${fmt$(v.spend)}</td>
+      <td class="num">${fmtN(v.impressions)}</td>
+      <td class="num">${fmtN(v.clicks)}</td>
+      <td class="num">${v.leads > 0 ? '<span class="tag">'+fmtN(v.leads)+'</span>' : '—'}</td>
+      <td class="num">${v.leads > 0 ? fmt$(v.spend/v.leads) : '—'}</td>
+    </tr>`).join('')}</tbody>
+  </table>`;
+  document.getElementById('campaignTable').innerHTML = tableHTML;
+}
+
+document.getElementById('clientSelect').addEventListener('change', render);
+document.getElementById('dateRange').addEventListener('change', render);
+render();
+</script>
+</body>
+</html>
